@@ -203,6 +203,7 @@ if __name__ == "__main__":
                 )
             )
             img_idx = int(os.path.splitext(os.path.basename(path))[0])
+            print("Processing image {}".format(img_idx))
             # generate predict map
             if args.seg_output:
                 # create directory if not exist
@@ -231,7 +232,8 @@ if __name__ == "__main__":
                     segmentation_map = generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox)
                     # save segmentation map as image
                     if os.path.isdir(args.seg_output):
-                        pass
+                        out_filename = os.path.join(args.seg_output, os.path.basename(path))
+                        cv2.imwrite(out_filename, segmentation_map)
                     else:
                         assert len(args.input) == 1, "Please specify a directory with args.seg_output"
                         out_filename = args.seg_output
