@@ -202,7 +202,7 @@ if __name__ == "__main__":
                     time.time() - start_time,
                 )
             )
-            img_idx = int(os.path.splitext(os.path.basename(path))[0]) - 1  # 1-based index to 0-based index
+            img_idx = int(os.path.splitext(os.path.basename(path))[0])
             # generate predict map
             if args.seg_output:
                 # create directory if not exist
@@ -225,7 +225,8 @@ if __name__ == "__main__":
                     if img.shape[0] > img.shape[1]:
                         x, y, w, h = attention_bbox
                         height, width = img.shape[:2]
-                        attention_bbox = [width - (y + h), x, width - y, (x + w)]
+                        # attention_bbox = [width - (y + h), x, width - y, (x + w)]
+                        attention_bbox = [x, y, (x + w), (y + h)]
 
                     segmentation_map = generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox)
                     # save segmentation map as image
