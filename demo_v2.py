@@ -11,6 +11,7 @@ import cv2
 import tqdm
 import sys
 import mss
+import pickle
 
 from detectron2.config import get_cfg
 from detectron2.data.detection_utils import read_image
@@ -96,10 +97,9 @@ def get_parser():
         help="Generate a segmentation map of the scene and save it to the output directory.",
     )
     parser.add_argument(
-        "--selected_class",
-        default=0,
-        type=int,
-        help="When not 0, select a class to generate segmentation map.",
+        "--attention_bbox_path",
+        default="",
+        help="BBOX for object that we are interested at.",
     )
     parser.add_argument(
         "--vocabulary",
@@ -145,23 +145,32 @@ def test_opencv_video_format(codec, file_ext):
         return False
 
 
-def generate_valid_segmentation_map(masks, scores, boxes, labels, selected_class=0):
-    # sorted by the size of the box
-    areas = (boxes[:, 2] - boxes[:, 0]) * (boxes[:, 3] - boxes[:, 1])
-    sorted_idx = np.argsort(areas)[::-1]
-    # filter out low score instances and small boxes
-    sorted_masks = masks[sorted_idx]
-    sorted_labels = labels[sorted_idx]
-    sorted_scores = scores[sorted_idx]
-    if selected_class:
-        sorted_masks = sorted_masks[sorted_labels == selected_class]
-        sorted_scores = sorted_scores[sorted_labels == selected_class]
-        sorted_labels = sorted_labels[sorted_labels == selected_class]
-    # merge all valid masks into one
-    segmentation_map = np.zeros(masks.shape[1:], dtype=np.uint16)
-    for label, mask in zip(sorted_labels, sorted_masks):
-        segmentation_map[mask] = label
-    return segmentation_map
+def iou(box1, box2):
+    # box = [x1, y1, x2, y2]
+    x1, y1, x2, y2 = box1
+    x3, y3, x4, y4 = box2
+    x_left = max(x1, x3)
+    y_top = max(y1, y3)
+    x_right = min(x2, x4)
+    y_bottom = min(y2, y4)
+    if x_right < x_left or y_bottom < y_top:
+        return 0.0
+    intersection_area = (x_right - x_left) * (y_bottom - y_top)
+    box1_area = (x2 - x1) * (y2 - y1)
+    box2_area = (x4 - x3) * (y4 - y3)
+    iou = intersection_area / float(box1_area + box2_area - intersection_area)
+    return iou
+
+
+def generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox=None):
+    if attention_bbox:
+        # select the instance that has the highest IoU with the attention bbox
+        ious = [iou(attention_bbox, box) for box in boxes]
+        max_iou_idx = np.argmax(ious)
+        max_iou_masks = masks[max_iou_idx]
+        segmentation_map = np.zeros(masks.shape[1:], dtype=np.uint8)
+        segmentation_map[max_iou_masks] = 255
+        return segmentation_map
 
 
 if __name__ == "__main__":
@@ -193,6 +202,7 @@ if __name__ == "__main__":
                     time.time() - start_time,
                 )
             )
+            img_idx = int(os.path.splitext(os.path.basename(path))[0]) - 1  # 1-based index to 0-based index
             # generate predict map
             if args.seg_output:
                 # create directory if not exist
@@ -203,16 +213,34 @@ if __name__ == "__main__":
                 scores = predictions["instances"].scores.cpu().numpy()
                 boxes = predictions["instances"].pred_boxes.tensor.cpu().numpy()
                 labels = predictions["instances"].pred_classes.cpu().numpy()
-                segmentation_map = generate_valid_segmentation_map(masks, scores, boxes, labels, args.selected_class)
-                # save segmentation map as image
-                if os.path.isdir(args.seg_output):
-                    pass
-                else:
-                    assert len(args.input) == 1, "Please specify a directory with args.seg_output"
-                    out_filename = args.seg_output
-                    cv2.imwrite(out_filename, segmentation_map)
+
+                # get attention bbox
+                if args.attention_bbox_path:
+                    with open(args.attention_bbox_path, 'r') as f:
+                        attention_bbox_lines = f.readlines()
+                    attention_bbox = attention_bbox_lines[img_idx].split('\t')
+                    attention_bbox = [int(x) for x in attention_bbox]
+                    
+                    # rotate bbox if height > width
+                    if img.shape[0] > img.shape[1]:
+                        x, y, w, h = attention_bbox
+                        height, width = img.shape[:2]
+                        attention_bbox = [width - (y + h), x, width - y, (x + w)]
+
+                    segmentation_map = generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox)
+                    # save segmentation map as image
+                    if os.path.isdir(args.seg_output):
+                        pass
+                    else:
+                        assert len(args.input) == 1, "Please specify a directory with args.seg_output"
+                        out_filename = args.seg_output
+                        cv2.imwrite(out_filename, segmentation_map)
 
             if args.output:
+                # create directory if not exist
+                output_dir = os.path.dirname(args.output)
+                if output_dir and (not os.path.exists(output_dir)):
+                    os.makedirs(output_dir)
                 if os.path.isdir(args.output):
                     assert os.path.isdir(args.output), args.output
                     out_filename = os.path.join(args.output, os.path.basename(path))
