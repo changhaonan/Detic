@@ -162,7 +162,7 @@ def iou(box1, box2):
     return iou
 
 
-def generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox=None):
+def generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox=None, show_bbox=False):
     if attention_bbox:
         # select the instance that has the highest IoU with the attention bbox
         ious = [iou(attention_bbox, box) for box in boxes]
@@ -170,6 +170,9 @@ def generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox
         max_iou_masks = masks[max_iou_idx]
         segmentation_map = np.zeros(masks.shape[1:], dtype=np.uint8)
         segmentation_map[max_iou_masks] = 255
+        if show_bbox:
+            cv2.rectangle(segmentation_map, (int(attention_bbox[0]), int(attention_bbox[1])),
+                          (int(attention_bbox[2]), int(attention_bbox[3])), (255, 0, 0), 2)
         return segmentation_map
 
 
@@ -223,13 +226,12 @@ if __name__ == "__main__":
                     attention_bbox = [int(x) for x in attention_bbox]
                     
                     # rotate bbox if height > width
-                    if img.shape[0] > img.shape[1]:
-                        x, y, w, h = attention_bbox
-                        height, width = img.shape[:2]
-                        # attention_bbox = [width - (y + h), x, width - y, (x + w)]
-                        attention_bbox = [x, y, (x + w), (y + h)]
+                    x, y, w, h = attention_bbox
+                    height, width = img.shape[:2]
+                    # attention_bbox = [width - (y + h), x, width - y, (x + w)]
+                    attention_bbox = [x, y, (x + w), (y + h)]
 
-                    segmentation_map = generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox)
+                    segmentation_map = generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox, False)
                     # save segmentation map as image
                     if os.path.isdir(args.seg_output):
                         out_filename = os.path.join(args.seg_output, os.path.basename(path))
