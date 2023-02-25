@@ -163,7 +163,7 @@ def iou(box1, box2):
 
 
 def generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox=None, show_bbox=False):
-    if attention_bbox:
+    if attention_bbox and len(masks) > 0:
         # select the instance that has the highest IoU with the attention bbox
         ious = [iou(attention_bbox, box) for box in boxes]
         max_iou_idx = np.argmax(ious)
@@ -174,6 +174,8 @@ def generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox
             cv2.rectangle(segmentation_map, (int(attention_bbox[0]), int(attention_bbox[1])),
                           (int(attention_bbox[2]), int(attention_bbox[3])), (255, 0, 0), 2)
         return segmentation_map
+    else:
+        return np.zeros(masks.shape[1:], dtype=np.uint8)
 
 
 if __name__ == "__main__":
