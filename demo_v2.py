@@ -17,7 +17,7 @@ from detectron2.config import get_cfg
 from detectron2.data.detection_utils import read_image
 from detectron2.utils.logger import setup_logger
 
-sys.path.insert(0, 'third_party/CenterNet2/')
+sys.path.insert(0, "third_party/CenterNet2/")
 from centernet.config import add_centernet_config
 from detic.config import add_detic_config
 
@@ -26,12 +26,12 @@ from detic.predictor import VisualizationDemo
 
 # Fake a video capture object OpenCV style - half width, half height of first screen using MSS
 
+
 class ScreenGrab:
     def __init__(self):
         self.sct = mss.mss()
         m0 = self.sct.monitors[0]
-        self.monitor = {'top': 0, 'left': 0,
-                        'width': m0['width'] / 2, 'height': m0['height'] / 2}
+        self.monitor = {"top": 0, "left": 0, "width": m0["width"] / 2, "height": m0["height"] / 2}
 
     def read(self):
         img = np.array(self.sct.grab(self.monitor))
@@ -61,7 +61,7 @@ def setup_cfg(args):
     cfg.MODEL.RETINANET.SCORE_THRESH_TEST = args.confidence_threshold
     cfg.MODEL.ROI_HEADS.SCORE_THRESH_TEST = args.confidence_threshold
     cfg.MODEL.PANOPTIC_FPN.COMBINE.INSTANCES_CONFIDENCE_THRESH = args.confidence_threshold
-    cfg.MODEL.ROI_BOX_HEAD.ZEROSHOT_WEIGHT_PATH = 'rand'  # load later
+    cfg.MODEL.ROI_BOX_HEAD.ZEROSHOT_WEIGHT_PATH = "rand"  # load later
     if not args.pred_all_class:
         cfg.MODEL.ROI_HEADS.ONE_CLASS_PER_PROPOSAL = True
     cfg.freeze()
@@ -69,8 +69,7 @@ def setup_cfg(args):
 
 
 def get_parser():
-    parser = argparse.ArgumentParser(
-        description="Detectron2 demo for builtin configs")
+    parser = argparse.ArgumentParser(description="Detectron2 demo for builtin configs")
     parser.add_argument(
         "--config-file",
         default="configs/quick_schedules/mask_rcnn_R_50_FPN_inference_acc_test.yaml",
@@ -78,18 +77,16 @@ def get_parser():
         help="path to config file",
     )
     parser.add_argument("--webcam", help="Take inputs from webcam.")
-    parser.add_argument("--cpu", action='store_true', help="Use CPU only.")
+    parser.add_argument("--cpu", action="store_true", help="Use CPU only.")
     parser.add_argument("--video-input", help="Path to video file.")
     parser.add_argument(
         "--input",
         nargs="+",
-        help="A list of space separated input images; "
-        "or a single glob pattern such as 'directory/*.jpg'",
+        help="A list of space separated input images; " "or a single glob pattern such as 'directory/*.jpg'",
     )
     parser.add_argument(
         "--output",
-        help="A file or directory to save output visualizations. "
-        "If not given, will show output in an OpenCV window.",
+        help="A file or directory to save output visualizations. " "If not given, will show output in an OpenCV window.",
     )
     parser.add_argument(
         "--seg_output",
@@ -104,7 +101,7 @@ def get_parser():
     parser.add_argument(
         "--vocabulary",
         default="lvis",
-        choices=['lvis', 'openimages', 'objects365', 'coco', 'custom'],
+        choices=["lvis", "openimages", "objects365", "coco", "custom"],
         help="",
     )
     parser.add_argument(
@@ -112,7 +109,7 @@ def get_parser():
         default="",
         help="",
     )
-    parser.add_argument("--pred_all_class", action='store_true')
+    parser.add_argument("--pred_all_class", action="store_true")
     parser.add_argument(
         "--confidence-threshold",
         type=float,
@@ -171,8 +168,9 @@ def generate_valid_segmentation_map(masks, scores, boxes, labels, attention_bbox
         segmentation_map = np.zeros(masks.shape[1:], dtype=np.uint8)
         segmentation_map[max_iou_masks] = 255
         if show_bbox:
-            cv2.rectangle(segmentation_map, (int(attention_bbox[0]), int(attention_bbox[1])),
-                          (int(attention_bbox[2]), int(attention_bbox[3])), (255, 0, 0), 2)
+            cv2.rectangle(
+                segmentation_map, (int(attention_bbox[0]), int(attention_bbox[1])), (int(attention_bbox[2]), int(attention_bbox[3])), (255, 0, 0), 2
+            )
         return segmentation_map
     else:
         return np.zeros(masks.shape[1:], dtype=np.uint8)
@@ -200,10 +198,7 @@ if __name__ == "__main__":
             logger.info(
                 "{}: {} in {:.2f}s".format(
                     path,
-                    "detected {} instances".format(
-                        len(predictions["instances"]))
-                    if "instances" in predictions
-                    else "finished",
+                    "detected {} instances".format(len(predictions["instances"])) if "instances" in predictions else "finished",
                     time.time() - start_time,
                 )
             )
@@ -222,11 +217,11 @@ if __name__ == "__main__":
 
                 # get attention bbox
                 if args.attention_bbox_path:
-                    with open(args.attention_bbox_path, 'r') as f:
+                    with open(args.attention_bbox_path, "r") as f:
                         attention_bbox_lines = f.readlines()
-                    attention_bbox = attention_bbox_lines[img_idx].split('\t')
+                    attention_bbox = attention_bbox_lines[img_idx].split("\t")
                     attention_bbox = [int(x) for x in attention_bbox]
-                    
+
                     # rotate bbox if height > width
                     x, y, w, h = attention_bbox
                     height, width = img.shape[:2]
@@ -281,7 +276,7 @@ if __name__ == "__main__":
         frames_per_second = video.get(cv2.CAP_PROP_FPS)
         num_frames = int(video.get(cv2.CAP_PROP_FRAME_COUNT))
         basename = os.path.basename(args.video_input)
-        codec, file_ext = (("x264", ".mkv") if test_opencv_video_format("x264", ".mkv") else ("mp4v", ".mp4"))
+        codec, file_ext = ("x264", ".mkv") if test_opencv_video_format("x264", ".mkv") else ("mp4v", ".mp4")
         if codec == ".mp4v":
             warnings.warn("x264 codec not available, switching to mp4v")
         if args.output:
